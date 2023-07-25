@@ -1,47 +1,34 @@
-// create web server
-// 1. load modules
-var http = require('http');
-var express = require('express');
-var bodyParser = require('body-parser');
-var fs = require('fs');
-var path = require('path');
-var app = express();
 
-// 2. set up server
-var server = http.createServer(app);
-server.listen(8080, function() {
-  console.log('Server listening at http://localhost:8080');
-});
+// Create web server
 
-// 3. set up static folder
-app.use(express.static(path.join(__dirname, 'public')));
-// 4. set up body parser
-app.use(bodyParser.urlencoded({extended: true}));
+const express = require('express');
+const bodyParser = require('body-parser');
+const { randomBytes } = require('crypto');
+const cors = require('cors'); // cross origin resource sharing
+
+const app = express();
 app.use(bodyParser.json());
+app.use(cors());
 
-// 5. set up routes
-app.get('/comments', function(req, res) {
-  console.log('GET comments');
-  fs.readFile('comments.json', function(err, data) {
-    if (err) {
-      console.log('error reading comments.json');
-      res.status(500).send('Error reading comments.json');
-      return;
-    }
-    var comments = JSON.parse(data);
-    res.json(comments);
-  });
+// Create a comments object
+const commentsByPostId = {};
+
+// Create a route handler for GET request
+app.get('/posts/:id/comments', (req, res) => {
+    res.send(commentsByPostId[req.params.id] || []);
 });
 
-app.post('/comments', function(req, res) {
-  console.log('POST comments');
-  var comments = req.body;
-  fs.writeFile('comments.json', JSON.stringify(comments), function(err) {
-    if (err) {
-      console.log('error writing comments.json');
-      res.status(500).send('Error writing comments.json');
-      return;
-    }
-    res.json(comments);
-  });
+// Create a route handler for POST request
+app.post('/posts/:id/comments', (req, res) => {
+    const commentId = randomBytes(4).toString('hex');
+    const { content } = req.body;
+    const comments = commentsByPostId[req.params.id] || [];
+    comments.push({ id: commentId, content });
+    commentsByPostId[req.params.id] = comments;
+    res.status(201).send(comments);
+});
+
+// Listen on port 4001
+app.listen(4001, () => {
+    console.log('Listening on 4001');
 });
